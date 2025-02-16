@@ -96,7 +96,11 @@
             <button type="button" onclick="addOrUpdateTransaction()">Catat Transaksi</button>
             <button type="button" onclick="shareData()">Bagikan Data</button>
         </form>
+
         <h3>Total Keuangan: Rp <span id="totalFinance">0</span></h3>
+        <h4>Total Pendapatan: Rp <span id="totalIncome">0</span></h4>
+        <h4>Total Pengeluaran: Rp <span id="totalExpense">0</span></h4>
+
         <table>
             <thead>
                 <tr>
@@ -114,6 +118,8 @@
     <script>
         const financeList = JSON.parse(localStorage.getItem('finances')) || [];
         let totalFinance = parseInt(localStorage.getItem('totalFinance')) || 0;
+        let totalIncome = parseInt(localStorage.getItem('totalIncome')) || 0;
+        let totalExpense = parseInt(localStorage.getItem('totalExpense')) || 0;
         let financeEditIndex = null;
 
         function addOrUpdateTransaction() {
@@ -129,12 +135,19 @@
                 financeEditIndex = null;
             } else {
                 financeList.push({ financeType, financeAmount, financeDescription, formattedDate, formattedTime });
-                if (financeType === 'income') totalFinance += financeAmount;
-                else totalFinance -= financeAmount;
+                if (financeType === 'income') {
+                    totalFinance += financeAmount;
+                    totalIncome += financeAmount;
+                } else {
+                    totalFinance -= financeAmount;
+                    totalExpense += financeAmount;
+                }
             }
 
             localStorage.setItem('finances', JSON.stringify(financeList));
             localStorage.setItem('totalFinance', totalFinance);
+            localStorage.setItem('totalIncome', totalIncome);
+            localStorage.setItem('totalExpense', totalExpense);
             renderFinance();
             document.getElementById('financeForm').reset();
         }
@@ -142,6 +155,8 @@
         function renderFinance() {
             const financeTable = document.getElementById('financeList');
             const totalDisplay = document.getElementById('totalFinance');
+            const incomeDisplay = document.getElementById('totalIncome');
+            const expenseDisplay = document.getElementById('totalExpense');
             financeTable.innerHTML = '';
             financeList.forEach((transaction, index) => {
                 const row = `
@@ -159,46 +174,35 @@
                 financeTable.innerHTML += row;
             });
             totalDisplay.innerText = totalFinance.toLocaleString();
-        }
-
-        function editTransaction(index) {
-            const transaction = financeList[index];
-            document.getElementById('financeType').value = transaction.financeType;
-            document.getElementById('financeAmount').value = transaction.financeAmount;
-            document.getElementById('financeDescription').value = transaction.financeDescription;
-            financeEditIndex = index;
+            incomeDisplay.innerText = totalIncome.toLocaleString();
+            expenseDisplay.innerText = totalExpense.toLocaleString();
         }
 
         function deleteTransaction(index) {
             const transaction = financeList[index];
-            if (transaction.financeType === 'income') totalFinance -= transaction.financeAmount;
-            else totalFinance += transaction.financeAmount;
+            if (transaction.financeType === 'income') {
+                totalFinance -= transaction.financeAmount;
+                totalIncome -= transaction.financeAmount;
+            } else {
+                totalFinance += transaction.financeAmount;
+                totalExpense -= transaction.financeAmount;
+            }
 
             financeList.splice(index, 1);
             localStorage.setItem('finances', JSON.stringify(financeList));
             localStorage.setItem('totalFinance', totalFinance);
+            localStorage.setItem('totalIncome', totalIncome);
+            localStorage.setItem('totalExpense', totalExpense);
             renderFinance();
         }
 
         function shareData() {
-            if (financeList.length === 0) {
-                alert("Tidak ada data untuk dibagikan!");
-                return;
-            }
-
-            let dataToShare = "Daftar Transaksi Keuangan:\n";
+            let dataToShare = `Total Keuangan: Rp ${totalFinance.toLocaleString()}\nTotal Pendapatan: Rp ${totalIncome.toLocaleString()}\nTotal Pengeluaran: Rp ${totalExpense.toLocaleString()}\n\nDetail Transaksi:\n`;
             financeList.forEach((transaction, index) => {
                 dataToShare += `${index + 1}. ${transaction.financeType === 'income' ? 'Pendapatan' : 'Pengeluaran'} - Rp ${transaction.financeAmount.toLocaleString()} (${transaction.financeDescription}) pada ${transaction.formattedDate} ${transaction.formattedTime}\n`;
             });
 
-            if (navigator.share) {
-                navigator.share({
-                    title: "Laporan Keuangan",
-                    text: dataToShare,
-                }).catch((err) => console.error("Gagal membagikan:", err));
-            } else {
-                alert("Fitur berbagi tidak didukung di perangkat ini.");
-            }
+            navigator.share?.({ title: "Laporan Keuangan", text: dataToShare });
         }
 
         renderFinance();
