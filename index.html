@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Manajemen Stok dan Keuangan</title>
+    <title>Manajemen Keuangan</title>
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -47,6 +47,7 @@
             cursor: pointer;
             border: none;
             transition: background-color 0.3s ease;
+            margin-top: 10px;
         }
         button:hover {
             background-color: #ff3e36;
@@ -73,33 +74,8 @@
     </style>
 </head>
 <body>
-    <h1>Manajemen Stok dan Keuangan</h1>
+    <h1>Manajemen Keuangan</h1>
     <div class="container">
-        <!-- Bagian Stok -->
-        <h2>Stok Barang</h2>
-        <form id="stockForm">
-            <div class="form-group">
-                <label for="itemName">Nama Barang:</label>
-                <input type="text" id="itemName" placeholder="Contoh: Sabun Cair" required>
-            </div>
-            <div class="form-group">
-                <label for="stockQuantity">Jumlah Stok:</label>
-                <input type="number" id="stockQuantity" min="1" placeholder="Masukkan jumlah stok" required>
-            </div>
-            <button type="button" onclick="addOrUpdateStock()">Tambah Stok</button>
-        </form>
-        <table>
-            <thead>
-                <tr>
-                    <th>Nama Barang</th>
-                    <th>Jumlah Stok</th>
-                    <th>Aksi</th>
-                </tr>
-            </thead>
-            <tbody id="stockList"></tbody>
-        </table>
-
-        <!-- Bagian Keuangan -->
         <h2>Keuangan</h2>
         <form id="financeForm">
             <div class="form-group">
@@ -118,6 +94,7 @@
                 <input type="text" id="financeDescription" placeholder="Contoh: Penjualan Sabun, Beli Bahan" required>
             </div>
             <button type="button" onclick="addOrUpdateTransaction()">Catat Transaksi</button>
+            <button type="button" onclick="shareData()">Bagikan Data</button>
         </form>
         <h3>Total Keuangan: Rp <span id="totalFinance">0</span></h3>
         <table>
@@ -126,6 +103,7 @@
                     <th>Jenis</th>
                     <th>Jumlah (Rp)</th>
                     <th>Keterangan</th>
+                    <th>Tanggal & Waktu</th>
                     <th>Aksi</th>
                 </tr>
             </thead>
@@ -134,69 +112,23 @@
     </div>
 
     <script>
-        const stockList = JSON.parse(localStorage.getItem('stocks')) || [];
         const financeList = JSON.parse(localStorage.getItem('finances')) || [];
         let totalFinance = parseInt(localStorage.getItem('totalFinance')) || 0;
-        let stockEditIndex = null;
         let financeEditIndex = null;
-
-        function addOrUpdateStock() {
-            const itemName = document.getElementById('itemName').value;
-            const stockQuantity = parseInt(document.getElementById('stockQuantity').value);
-
-            if (stockEditIndex !== null) {
-                stockList[stockEditIndex] = { itemName, stockQuantity };
-                stockEditIndex = null;
-            } else {
-                stockList.push({ itemName, stockQuantity });
-            }
-
-            localStorage.setItem('stocks', JSON.stringify(stockList));
-            renderStock();
-            document.getElementById('stockForm').reset();
-        }
-
-        function renderStock() {
-            const stockTable = document.getElementById('stockList');
-            stockTable.innerHTML = '';
-            stockList.forEach((item, index) => {
-                const row = `
-                    <tr>
-                        <td>${item.itemName}</td>
-                        <td>${item.stockQuantity}</td>
-                        <td>
-                            <button onclick="editStock(${index})">Edit</button>
-                            <button onclick="deleteStock(${index})">Hapus</button>
-                        </td>
-                    </tr>
-                `;
-                stockTable.innerHTML += row;
-            });
-        }
-
-        function editStock(index) {
-            const item = stockList[index];
-            document.getElementById('itemName').value = item.itemName;
-            document.getElementById('stockQuantity').value = item.stockQuantity;
-            stockEditIndex = index;
-        }
-
-        function deleteStock(index) {
-            stockList.splice(index, 1);
-            localStorage.setItem('stocks', JSON.stringify(stockList));
-            renderStock();
-        }
 
         function addOrUpdateTransaction() {
             const financeType = document.getElementById('financeType').value;
             const financeAmount = parseInt(document.getElementById('financeAmount').value);
             const financeDescription = document.getElementById('financeDescription').value;
+            const currentDate = new Date();
+            const formattedDate = currentDate.toLocaleDateString('id-ID');
+            const formattedTime = currentDate.toLocaleTimeString('id-ID');
 
             if (financeEditIndex !== null) {
-                financeList[financeEditIndex] = { financeType, financeAmount, financeDescription };
+                financeList[financeEditIndex] = { financeType, financeAmount, financeDescription, formattedDate, formattedTime };
                 financeEditIndex = null;
             } else {
-                financeList.push({ financeType, financeAmount, financeDescription });
+                financeList.push({ financeType, financeAmount, financeDescription, formattedDate, formattedTime });
                 if (financeType === 'income') totalFinance += financeAmount;
                 else totalFinance -= financeAmount;
             }
@@ -217,6 +149,7 @@
                         <td>${transaction.financeType === 'income' ? 'Pendapatan' : 'Pengeluaran'}</td>
                         <td>Rp ${transaction.financeAmount.toLocaleString()}</td>
                         <td>${transaction.financeDescription}</td>
+                        <td>${transaction.formattedDate} ${transaction.formattedTime}</td>
                         <td>
                             <button onclick="editTransaction(${index})">Edit</button>
                             <button onclick="deleteTransaction(${index})">Hapus</button>
@@ -247,7 +180,27 @@
             renderFinance();
         }
 
-        renderStock();
+        function shareData() {
+            if (financeList.length === 0) {
+                alert("Tidak ada data untuk dibagikan!");
+                return;
+            }
+
+            let dataToShare = "Daftar Transaksi Keuangan:\n";
+            financeList.forEach((transaction, index) => {
+                dataToShare += `${index + 1}. ${transaction.financeType === 'income' ? 'Pendapatan' : 'Pengeluaran'} - Rp ${transaction.financeAmount.toLocaleString()} (${transaction.financeDescription}) pada ${transaction.formattedDate} ${transaction.formattedTime}\n`;
+            });
+
+            if (navigator.share) {
+                navigator.share({
+                    title: "Laporan Keuangan",
+                    text: dataToShare,
+                }).catch((err) => console.error("Gagal membagikan:", err));
+            } else {
+                alert("Fitur berbagi tidak didukung di perangkat ini.");
+            }
+        }
+
         renderFinance();
     </script>
 </body>
